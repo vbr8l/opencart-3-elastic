@@ -6,5 +6,4 @@
 * docker-compose up
 * opencart-my-store - Web Store UI
 * opencart-my-store/admin - Admin UI
-* http://localhost:8086 - InfluxDB UI (admin/qwerty123)
-* http://localhost:8888 - Chronograf
+* http://localhost:5601 - Kibana
