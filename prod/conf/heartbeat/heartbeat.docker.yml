@@ -1,18 +1,29 @@
 heartbeat.monitors:
-- type: http
-  schedule: '@every 5s'
-  urls:
-    - http://elasticsearch:9200
-    - http://kibana:5601
+  - type: http
+    id: cms-frontend
+    name: CMS frontend
+    schedule: '@every 5s'
+    urls:
+      - https://frontend
+    ssl:
+      verification_mode: none
+  - type: tcp
+    id: cms-database
+    name: CMS database
+    hosts:
+      - database
+    ports:
+      - 3306
+    schedule: '@every 5s'
 
-- type: icmp
-  schedule: '@every 5s'
-  hosts:
-    - elasticsearch
-    - kibana
+setup.template:
+  settings:
+    index.number_of_shards: 1
+    index.codec: best_compression
 
 processors:
-- add_cloud_metadata: ~
+  #- add_host_metadata: ~
+  #- add_docker_metadata: ~
 
 output.elasticsearch:
   hosts: '${ELASTICSEARCH_HOST}'

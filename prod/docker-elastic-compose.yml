@@ -1,4 +1,59 @@
 services:
+  heartbeat:
+    image: elastic/heartbeat:8.15.5
+    depends_on:
+      - kibana
+    user: heartbeat
+    environment:
+      - ELASTICSEARCH_HOST=elasticsearch:9200
+      - KIBANA_HOST=kibana:5601
+    volumes:
+      - ./conf/heartbeat/heartbeat.docker.yml:/usr/share/heartbeat/heartbeat.yml:ro
+    networks:
+      - cms-network
+      - elastic-network
+    command: ["--strict.perms=false"]
+    restart: always
+
+  metricbeat:
+    image: elastic/metricbeat:8.15.5
+    depends_on:
+      - kibana
+    hostname: opencart-3-prod
+    user: root
+    environment:
+      - ELASTICSEARCH_HOST=elasticsearch:9200
+      - KIBANA_HOST=kibana:5601
+    volumes:
+      - ./conf/metricbeat/metricbeat.docker.yml:/usr/share/metricbeat/metricbeat.yml:ro
+      - /proc:/hostfs/proc:ro
+      - /sys/fs/cgroup:/hostfs/sys/fs/cgroup:ro
+      - /:/hostfs:ro
+      - /var/run/docker.sock:/var/run/docker.sock
+      - data_metricbeat:/usr/share/metricbeat/data
+    networks:
+      - cms-network
+      - elastic-network
+    command: ["--strict.perms=false", "-system.hostfs=/hostfs"]
+    restart: always
+
+  filebeat:
+    image: elastic/filebeat:8.15.5
+    user: root
+    environment:
+      - ELASTICSEARCH_HOST=elasticsearch:9200
+      - KIBANA_HOST=kibana:5601
+    volumes:
+      - ./conf/filebeat/filebeat.docker.yml:/usr/share/filebeat/filebeat.yml:ro
+      - /var/lib/docker/containers:/var/lib/docker/containers:ro
+      - /var/run/docker.sock:/var/run/docker.sock:ro
+      - data_filebeat:/usr/share/filebeat/data:rw
+    networks:
+      - cms-network
+      - elastic-network
+    command: ["--strict.perms=false"]
+    restart: always
+
   elasticsearch:
     image: elasticsearch:8.15.5
     environment:
@@ -6,7 +61,6 @@ services:
       - discovery.type=single-node
       - xpack.security.enabled=false
       - xpack.security.enrollment.enabled=false
-      #- ELASTIC_PASSWORD=${ELASTIC_PASSWORD:-}
     networks:
       - elastic-network
     volumes:
@@ -18,7 +72,7 @@ services:
       test: ["CMD-SHELL", "curl --silent --fail localhost:9200/_cluster/health || exit 1"]
       interval: 10s
       timeout: 10s
-      retries: 3
+      retries: 10
     restart: always
 
   kibana:
@@ -29,8 +83,6 @@ services:
     environment:
       - SERVERNAME=kibana
       - ELASTICSEARCH_HOSTS=http://elasticsearch:9200
-      #- ELASTICSEARCH_USERNAME=kibana_system
-      #- ELASTICSEARCH_PASSWORD=${KIBANA_PASSWORD}
     networks:
       - elastic-network
     volumes:

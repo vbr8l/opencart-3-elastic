@@ -1,11 +1,6 @@
 services:
   frontend:
     image: nginx:1.27.0
-    deploy:
-      labels:
-        co.elastic.logs/module: nginx
-        co.elastic.logs/fileset.stdout: access
-        co.elastic.logs/fileset.stderr: error
     volumes:
       - ./conf/nginx/templates:/etc/nginx/templates/
       - ./conf/nginx/includes/ssl.conf:/etc/nginx/includes/ssl.conf:ro

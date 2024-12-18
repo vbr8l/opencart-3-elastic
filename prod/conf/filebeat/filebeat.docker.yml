@@ -6,12 +6,75 @@ filebeat.config:
 filebeat.autodiscover:
   providers:
     - type: docker
-      hints.enabled: true
+      templates:
+        - condition:
+            contains:
+              docker.container.image: nginx
+          config:
+            - module: nginx
+              access:
+                input:
+                  type: container
+                  paths:
+                    - /var/lib/docker/containers/${data.docker.container.id}/*.log
+                  stream: stdout
+              error:
+                input:
+                  type: container
+                  paths:
+                    - /var/lib/docker/containers/${data.docker.container.id}/*.log
+                  stream: stderr
+                  processors:
+                    - urldecode:
+                        fields:
+                          - from: "message"
+                        ignore_missing: true
+                        fail_on_error: false
+        - condition:
+            contains:
+              docker.container.image: mysql
+          config:
+            - module: mysql
+              error:
+                input:
+                  type: container
+                  paths:
+                    - /var/lib/docker/containers/${data.docker.container.id}/*.log
+                  stream: stdout
+              slowlog:
+                enabled: false
+        - condition:
+            contains:
+              docker.container.image: php-fpm
+          config:
+            - type: container
+              paths:
+                - /var/lib/docker/containers/${data.docker.container.id}/*.log
+              fields:
+                event.dataset: php-fpm
+              fields_under_root: true
+
+setup.ilm.enabled: false
+setup.template:
+  settings:
+    index.number_of_shards: 1
+    index.codec: best_compression
 
 processors:
-- add_cloud_metadata: ~
+  #- add_host_metadata: ~
+  #- add_docker_metadata: ~
 
 output.elasticsearch:
   hosts: '${ELASTICSEARCH_HOST}'
   username: '${ELASTICSEARCH_USERNAME:}'
   password: '${ELASTICSEARCH_PASSWORD:}'
+  indices:
+    - index: "cms-%{[docker.container.labels.com_docker_compose_service]}-%{+yyyy.MM.dd}"
+      when.contains:
+        docker.container.labels.com_docker_compose_service: "frontend"
+    - index: "cms-%{[docker.container.labels.com_docker_compose_service]}-%{+yyyy.MM.dd}"
+      when.contains:
+        docker.container.labels.com_docker_compose_service: "php-fpm"
+    - index: "cms-%{[docker.container.labels.com_docker_compose_service]}-%{+yyyy.MM.dd}"
+      when.contains:
+        docker.container.labels.com_docker_compose_service: "database"
